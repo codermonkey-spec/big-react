@@ -4,20 +4,25 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"prepare": "husky install"
+		"prepare": "husky install",
+		"build:dev": "rimraf dist && rollup --bundleConfigAsCjs --config scripts/rollup/react.config.js"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "ISC",
 	"devDependencies": {
 		"@eslint/js": "^9.30.0",
+		"@rollup/plugin-commonjs": "^28.0.6",
 		"@typescript-eslint/eslint-plugin": "^8.34.1",
 		"@typescript-eslint/parser": "^8.34.1",
 		"eslint": "^9.29.0",
 		"globals": "^16.2.0",
 		"husky": "^9.1.7",
 		"prettier": "^3.5.3",
+		"rimraf": "^6.0.1",
 		"rollup": "^4.44.1",
+		"rollup-plugin-generate-package-json": "^3.2.0",
+		"rollup-plugin-typescript2": "^0.36.0",
 		"typescript": "^5.8.3",
 		"typescript-eslint": "^8.35.0"
 	}

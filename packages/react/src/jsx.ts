@@ -4,7 +4,7 @@ import type {
 	Key,
 	Ref,
 	Props,
-	ReactElement,
+	ReactElementType,
 	ElementType
 } from 'shared/ReactTypes';
 
@@ -13,7 +13,7 @@ const ReactElement = (
 	key: Key,
 	ref: Ref,
 	props: Props
-): ReactElement => {
+): ReactElementType => {
 	const element = {
 		$$typeof: REACT_ELEMENT_TYPE,
 		type,
