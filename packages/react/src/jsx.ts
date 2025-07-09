@@ -64,4 +64,33 @@ export const jsx = (type: ElementType, config: any, ...maybeChild: any) => {
 	return ReactElement(type, key, ref, props);
 };
 
-export const jsxDEV = jsx;
+export const jsxDev = (type: ElementType, config: any) => {
+	let props: Props = {};
+	let key: Key = null;
+	let ref: Ref = null;
+
+	for (const prop of config) {
+		const val = config[prop];
+		if (prop === 'key') {
+			if (val !== undefined) {
+				key = '' + val;
+			}
+			continue;
+		}
+
+		if (prop === 'ref') {
+			if (val !== undefined) {
+				ref = val;
+			}
+			continue;
+		}
+
+		if ({}.hasOwnProperty.call(config, prop)) {
+			props[prop] = val;
+		}
+	}
+
+	return ReactElement(type, key, ref, props);
+};
+
+export const jsxDEV = jsxDev;
