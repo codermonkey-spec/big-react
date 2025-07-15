@@ -31,6 +31,7 @@ export const enqueueUpdate = <State>(
 	updateQueue.shared.pending = update;
 };
 
+// 往队列中添加
 export const processUpdateQueue = <State>(
 	baseState: State,
 	pendingUpdate: Update<State> | null

@@ -1,4 +1,3 @@
-import { getModeForResolutionAtIndex } from 'typescript';
 import { createWorkInProcess, FiberNode, FiberRootNode } from './fiber';
 import { beginWork } from './beginWork';
 import { completeWork } from './completeWork';
@@ -48,6 +47,11 @@ function renderRoot(root: FiberRootNode) {
 			workInProgress = null;
 		}
 	} while (true);
+
+	const finishedWork = root.current.alternate;
+	root.finishedWork = finishedWork;
+
+	// commitRoot(root);
 }
 
 export const workLoop = () => {

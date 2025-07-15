@@ -1,7 +1,7 @@
 import { Flags, NoFlags } from './fiberFlags';
 import { Container } from 'hostConfig';
-import { WorkTag } from './workTags';
-import { Props, Key, Ref } from 'shared/ReactTypes';
+import { FunctionComponent, HostCompoment, WorkTag } from './workTags';
+import { Props, Key, Ref, ReactElementType } from 'shared/ReactTypes';
 
 export class FiberNode {
 	tag: WorkTag; // 节点类型 () -> {}  -> FunctionComponent
@@ -17,9 +17,10 @@ export class FiberNode {
 	index: number; // 当前节点在其兄弟节点中的位置
 
 	memoizedProps: Props | null; // 上一次渲染使用的props
-	memoizedState: any; // 上一次的State
+	memoizedState: any; // 状态
 	alternate: FiberNode | null; // 指向上次渲染的fiber(current和workInProgress的互指)
 	flags: Flags; // fiber需要执行的操作
+	subtreeFlags: Flags;
 	updateQueue: unknown; // 存放state更新队列(如setState的调用)
 
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
@@ -43,6 +44,7 @@ export class FiberNode {
 
 		// 副作用
 		this.flags = NoFlags;
+		this.subtreeFlags = NoFlags;
 	}
 }
 
@@ -74,6 +76,7 @@ export const createWorkInProcess = (
 		// update
 		wip.pendingProps = pendingProps;
 		wip.flags = NoFlags;
+		wip.subtreeFlags = NoFlags;
 	}
 
 	wip.type = current.type;
@@ -83,4 +86,21 @@ export const createWorkInProcess = (
 	wip.memoizedState = current.memoizedState;
 
 	return wip;
+};
+
+export const createFiberFromElement = (element: ReactElementType) => {
+	const { type, key, props } = element;
+
+	let fiberTag: WorkTag = FunctionComponent;
+
+	if (typeof type === 'string') {
+		// HostComponent <div></div> -> type: "div"
+		fiberTag = HostCompoment;
+	} else if (typeof type !== 'function' && __DEV__) {
+		console.warn('未定义的type类型', type);
+	}
+
+	const fiber = new FiberNode(fiberTag, props, key);
+	fiber.type = type;
+	return fiber;
 };
