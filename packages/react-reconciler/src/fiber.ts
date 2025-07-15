@@ -20,7 +20,7 @@ export class FiberNode {
 	memoizedState: any; // 状态
 	alternate: FiberNode | null; // 指向上次渲染的fiber(current和workInProgress的互指)
 	flags: Flags; // fiber需要执行的操作
-	subtreeFlags: Flags;
+	subtreeFlags: Flags; // 当前节点的子树的副作用标识
 	updateQueue: unknown; // 存放state更新队列(如setState的调用)
 
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
