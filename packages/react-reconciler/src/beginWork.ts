@@ -1,8 +1,14 @@
 import { ReactElementType } from 'shared/ReactTypes';
 import { FiberNode } from './fiber';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
-import { HostCompoment, HostRoot, HostText } from './workTags';
+import {
+	FunctionComponent,
+	HostCompoment,
+	HostRoot,
+	HostText
+} from './workTags';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
+import { renderWithHooks } from './fiberHooks';
 
 export const beginWork = (wip: FiberNode) => {
 	// 比较ReactElement和FilberNode,生成子FilberNode
@@ -14,6 +20,8 @@ export const beginWork = (wip: FiberNode) => {
 			return updateHostComponent(wip);
 		case HostText:
 			return null;
+		case FunctionComponent:
+			return updateFunctionComponent(wip);
 		default:
 			if (__DEV__) {
 				console.warn('beginWork未实现的部分');
@@ -22,6 +30,13 @@ export const beginWork = (wip: FiberNode) => {
 	}
 
 	return null;
+};
+
+export const updateFunctionComponent = (wip: FiberNode) => {
+	const nextChildren = renderWithHooks(wip);
+	reconcileChildren(wip, nextChildren);
+
+	return wip.child;
 };
 
 export const updateHostRoot = (wip: FiberNode) => {
@@ -49,8 +64,8 @@ export const updateHostRoot = (wip: FiberNode) => {
 export const updateHostComponent = (wip: FiberNode) => {
 	const nextProps = wip.memoizedProps;
 	const nextChildren = nextProps.children;
-	reconcileChildren(wip, nextChildren);
 
+	reconcileChildren(wip, nextChildren);
 	return wip.child;
 };
 

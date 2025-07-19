@@ -30,7 +30,7 @@ export const jsx = (type: ElementType, config: any, ...maybeChild: any) => {
 	let key: Key = null;
 	let ref: Ref = null;
 
-	for (const prop of config) {
+	for (const prop in config) {
 		const val = config[prop];
 		if (prop === 'key') {
 			if (val !== undefined) {
@@ -69,7 +69,7 @@ export const jsxDev = (type: ElementType, config: any) => {
 	let key: Key = null;
 	let ref: Ref = null;
 
-	for (const prop of config) {
+	for (const prop in config) {
 		const val = config[prop];
 		if (prop === 'key') {
 			if (val !== undefined) {
@@ -93,4 +93,4 @@ export const jsxDev = (type: ElementType, config: any) => {
 	return ReactElement(type, key, ref, props);
 };
 
-export const jsxDEV = jsxDev;
+export const jsxDEV = jsx;
