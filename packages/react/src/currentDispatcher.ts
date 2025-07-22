@@ -1,11 +1,11 @@
 import { Action } from 'shared/ReactTypes';
 
-export interface Dispacher {
+export interface Dispatch {
 	useState: <T>(initialState: () => T | T) => [T, Dispach<T>];
 }
 
 export type Dispach<State> = (action: Action<State>) => void;
-const currentDispatcher: { current: Dispacher | null } = {
+const currentDispatcher: { current: Dispatch | null } = {
 	current: null
 };
 

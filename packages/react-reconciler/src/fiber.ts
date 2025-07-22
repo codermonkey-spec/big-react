@@ -22,6 +22,7 @@ export class FiberNode {
 	flags: Flags; // fiber需要执行的操作
 	subtreeFlags: Flags; // 当前节点的子树的副作用标识
 	updateQueue: unknown; // 存放state更新队列(如setState的调用)
+	deletions: FiberNode[] | null;
 
 	constructor(tag: WorkTag, pendingProps: Props, key: Key) {
 		this.tag = tag; // fiber类型
@@ -45,6 +46,7 @@ export class FiberNode {
 		// 副作用
 		this.flags = NoFlags;
 		this.subtreeFlags = NoFlags;
+		this.deletions = null;
 	}
 }
 
@@ -77,6 +79,7 @@ export const createWorkInProcess = (
 		wip.pendingProps = pendingProps;
 		wip.flags = NoFlags;
 		wip.subtreeFlags = NoFlags;
+		wip.deletions = null;
 	}
 
 	wip.type = current.type;
