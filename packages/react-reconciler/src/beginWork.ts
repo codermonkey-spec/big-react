@@ -9,6 +9,7 @@ import {
 } from './workTags';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { renderWithHooks } from './fiberHooks';
+import { Fragment } from 'react';
 
 export const beginWork = (wip: FiberNode) => {
 	// 比较ReactElement和FilberNode,生成子FilberNode
@@ -22,6 +23,9 @@ export const beginWork = (wip: FiberNode) => {
 			return null;
 		case FunctionComponent:
 			return updateFunctionComponent(wip);
+
+		case Fragment:
+			return updateFragment(wip);
 		default:
 			if (__DEV__) {
 				console.warn('beginWork未实现的部分');
@@ -31,6 +35,13 @@ export const beginWork = (wip: FiberNode) => {
 
 	return null;
 };
+
+function updateFragment(wip: FiberNode) {
+	const nextChildren = wip.pendingProps;
+	reconcileChildren(wip, nextChildren);
+
+	return wip.child;
+}
 
 export const updateFunctionComponent = (wip: FiberNode) => {
 	const nextChildren = renderWithHooks(wip);
