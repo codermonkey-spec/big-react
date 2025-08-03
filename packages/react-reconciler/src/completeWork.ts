@@ -1,6 +1,7 @@
 import { Container, createInstance, createTextInstance } from 'hostConfig';
 import { FiberNode } from './fiber';
 import {
+	Fragment,
 	FunctionComponent,
 	HostCompoment,
 	HostRoot,
@@ -8,7 +9,6 @@ import {
 } from './workTags';
 import { NoFlags, Update } from './fiberFlags';
 import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
-import { Fragment } from 'react';
 
 export const markUpdate = (fiber: FiberNode) => {
 	fiber.flags |= Update;

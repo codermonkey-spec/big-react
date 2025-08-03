@@ -2,6 +2,7 @@ import { ReactElementType } from 'shared/ReactTypes';
 import { FiberNode } from './fiber';
 import { processUpdateQueue, UpdateQueue } from './updateQueue';
 import {
+	Fragment,
 	FunctionComponent,
 	HostCompoment,
 	HostRoot,
@@ -9,20 +10,20 @@ import {
 } from './workTags';
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { renderWithHooks } from './fiberHooks';
-import { Fragment } from 'react';
+import { Lane } from './fiberLanes';
 
-export const beginWork = (wip: FiberNode) => {
+export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	// 比较ReactElement和FilberNode,生成子FilberNode
 
 	switch (wip.tag) {
 		case HostRoot:
-			return updateHostRoot(wip);
+			return updateHostRoot(wip, renderLane);
 		case HostCompoment:
 			return updateHostComponent(wip);
 		case HostText:
 			return null;
 		case FunctionComponent:
-			return updateFunctionComponent(wip);
+			return updateFunctionComponent(wip, renderLane);
 
 		case Fragment:
 			return updateFragment(wip);
@@ -43,14 +44,14 @@ function updateFragment(wip: FiberNode) {
 	return wip.child;
 }
 
-export const updateFunctionComponent = (wip: FiberNode) => {
-	const nextChildren = renderWithHooks(wip);
+export const updateFunctionComponent = (wip: FiberNode, renderLane: Lane) => {
+	const nextChildren = renderWithHooks(wip, renderLane);
 	reconcileChildren(wip, nextChildren);
 
 	return wip.child;
 };
 
-export const updateHostRoot = (wip: FiberNode) => {
+export const updateHostRoot = (wip: FiberNode, renderLane: Lane) => {
 	// 上一次更新的state
 	const baseState = wip.memoizedState;
 
@@ -62,7 +63,7 @@ export const updateHostRoot = (wip: FiberNode) => {
 	updateQueue.shared.pending = null;
 
 	// 计算出新的state
-	const { memoizedState } = processUpdateQueue(baseState, pending);
+	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
 	wip.memoizedState = memoizedState;
 
 	const nextChildren = wip.memoizedState;

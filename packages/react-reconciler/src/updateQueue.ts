@@ -53,7 +53,8 @@ export const enqueueUpdate = <State>(
 // 往队列中添加
 export const processUpdateQueue = <State>(
 	baseState: State,
-	pendingUpdate: Update<State> | null
+	pendingUpdate: Update<State> | null,
+	renderLane: Lane
 ): {
 	memoizedState: State;
 } => {
@@ -61,15 +62,28 @@ export const processUpdateQueue = <State>(
 		memoizedState: baseState
 	};
 	if (pendingUpdate !== null) {
-		const action = pendingUpdate.action;
-		if (action instanceof Function) {
-			// state 1 -> () => 4
-			result.memoizedState = action(baseState);
-		} else {
-			// state 1 -> 2
-			result.memoizedState = action;
-		}
+		const first = pendingUpdate.next;
+		let pending = pendingUpdate.next as Update<any>;
+		do {
+			const updateLane = pending.lane;
+			if (updateLane === renderLane) {
+				const action = pending.action;
+				if (action instanceof Function) {
+					// state 1 -> () => 4
+					baseState = action(baseState);
+				} else {
+					// state 1 -> 2
+					baseState = action;
+				}
+			} else {
+				if (__DEV__) {
+					console.log('不应该进入的情况');
+				}
+			}
+			pending = pending?.next as Update<any>;
+		} while (pending !== first);
 	}
 
+	result.memoizedState = baseState;
 	return result;
 };
