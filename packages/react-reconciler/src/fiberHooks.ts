@@ -45,6 +45,7 @@ export type EffectDeps = any[] | null;
 export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 	currentlyRenderingFiber = wip;
 	wip.memoizedState = null;
+	wip.updateQueue = null;
 	renderLane = lane;
 
 	const current = wip.alternate;
@@ -70,11 +71,12 @@ export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 
 export const HooksDispatcherOnMount: Dispatch = {
 	useState: mountState,
-	useEffect: mountEffect
+	useEffect: mountEffect as any
 };
 
 export const HooksDispatcherOnUpdate: Dispatch = {
-	useState: updateState
+	useState: updateState,
+	useEffect: updateEffect
 };
 
 function mountEffect(create: EffectCallback | void, deps: EffectDeps) {
@@ -88,6 +90,54 @@ function mountEffect(create: EffectCallback | void, deps: EffectDeps) {
 		undefined,
 		nextDeps
 	);
+}
+
+function updateEffect(create: EffectCallback | void, deps: EffectDeps) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
+
+	let destroy: EffectCallback | void;
+
+	if (currentHook !== null) {
+		const prevEffect = currentHook.memoizedState as Effect;
+		destroy = prevEffect.destroy;
+
+		if (nextDeps !== null) {
+			// useEffect的依赖项的比较
+			const prevDeps = prevEffect.deps;
+			if (areHookInputsEqual(nextDeps, prevDeps)) {
+				hook.memoizedState = pushEffect(Passive, create, destroy, deps);
+				return;
+			}
+		}
+
+		// 浅比较之后不相同的情况
+
+		(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
+		hook.memoizedState = pushEffect(
+			Passive | HookHasEffect,
+			create,
+			destroy,
+			deps
+		);
+	}
+}
+
+export function areHookInputsEqual(nextDeps: EffectDeps, prevDeps: EffectDeps) {
+	if (nextDeps === null || prevDeps === null) {
+		return false;
+	}
+
+	for (let i = 0; i < prevDeps.length && i < nextDeps.length; i++) {
+		if (Object.is(prevDeps[i], nextDeps[i])) {
+			continue;
+		}
+
+		return false;
+	}
+
+	return true;
 }
 
 function pushEffect(

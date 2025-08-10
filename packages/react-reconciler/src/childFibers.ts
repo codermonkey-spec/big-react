@@ -319,7 +319,7 @@ export function updateFragment(
 	if (fiber) {
 		fiber.return = returnFiber;
 	}
-	return fiber;
+	return fiber as FiberNode;
 }
 export const reconcileChildFibers = ChildReconciler(true);
 export const mountChildFibers = ChildReconciler(false);
