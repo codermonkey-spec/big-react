@@ -3,6 +3,8 @@ import { Action } from 'shared/ReactTypes';
 export interface Dispatch {
 	useState: <T>(initialState: () => T | T) => [T, Dispach<T>];
 	useEffect: (callback: () => void | void, deps: any[] | void) => void;
+	useTrasition: () => [boolean, (callback: () => void) => void];
+	useRef: <T>(initialValue: T) => { current: T };
 }
 
 export type Dispach<State> = (action: Action<State>) => void;

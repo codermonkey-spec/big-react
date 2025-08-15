@@ -1,11 +1,13 @@
 import internals from 'shared/internals';
 import { FiberNode } from './fiber';
 import { Dispach, Dispatch } from 'react/src/currentDispatcher';
+import currentBatchConfig from 'react/src/curentBatchConfig';
 import {
 	createUpdate,
 	createUpdateQueue,
 	enqueueUpdate,
 	processUpdateQueue,
+	Update,
 	UpdateQueue
 } from './updateQueue';
 import { Action } from 'shared/ReactTypes';
@@ -25,6 +27,8 @@ interface Hook {
 	memoizedState: any;
 	updateQueue: unknown;
 	next: Hook | null;
+	baseState: any;
+	baseQueue: Update<any> | null;
 }
 
 export interface Effect {
@@ -71,13 +75,30 @@ export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 
 export const HooksDispatcherOnMount: Dispatch = {
 	useState: mountState,
-	useEffect: mountEffect as any
+	useEffect: mountEffect as any,
+	useTrasition: mountTrasition,
+	useRef: mountRef
 };
 
 export const HooksDispatcherOnUpdate: Dispatch = {
 	useState: updateState,
-	useEffect: updateEffect
+	// @ts-ignore
+	useEffect: updateEffect,
+	useTrasition: updateTrasition,
+	useRef: updateRef
 };
+
+export function mountRef<T>(initialValue: T): { current: T } {
+	const hook = mountWorkInProgressHook();
+	const ref = { current: initialValue };
+	hook.memoizedState = ref;
+	return ref;
+}
+
+export function updateRef() {
+	const hook = updateWorkInProgressHook();
+	return hook.memoizedState;
+}
 
 function mountEffect(create: EffectCallback | void, deps: EffectDeps) {
 	const hook = mountWorkInProgressHook();
@@ -190,16 +211,35 @@ export function updateState<State>(): [State, Dispach<State>] {
 
 	// 计算新的state的逻辑
 	const queue = hook.updateQueue as UpdateQueue<State>;
+	const baseState = hook.baseState;
 	const pending = queue.shared.pending;
 	queue.shared.pending = null;
 
+	const current = currentHook as Hook;
+	let baseQueue = current.baseQueue;
+
 	if (pending !== null) {
-		const { memoizedState } = processUpdateQueue(
-			hook.memoizedState,
-			pending,
-			renderLane
-		);
+		// pending,baseQueue update保存在current中
+		if (baseQueue !== null) {
+			const baseFirst = baseQueue.next;
+			const pendingFirst = pending.next;
+
+			baseQueue.next = pendingFirst;
+			pending.next = baseFirst;
+		}
+		baseQueue = pending;
+		current.baseQueue = pending;
+		queue.shared.pending = null;
+	}
+	if (baseQueue !== null) {
+		const {
+			memoizedState,
+			baseState: newBaseState,
+			baseQueue: newBaseQueue
+		} = processUpdateQueue(baseState, baseQueue, renderLane);
 		hook.memoizedState = memoizedState;
+		hook.baseState = newBaseState;
+		hook.baseQueue = newBaseQueue;
 	}
 
 	return [hook.memoizedState, queue.dispatch as Dispach<State>];
@@ -225,7 +265,9 @@ export const updateWorkInProgressHook = () => {
 	const newHook: Hook = {
 		memoizedState: currentHook.memoizedState,
 		updateQueue: currentHook.updateQueue,
-		next: null
+		next: null,
+		baseState: currentHook.baseState,
+		baseQueue: currentHook.baseQueue
 	};
 
 	if (nextCurrentHook) {
@@ -263,6 +305,8 @@ export function mountState<State>(
 
 	const queue = createUpdateQueue<State>();
 	hook.updateQueue = queue;
+	hook.memoizedState = memoizedState;
+	hook.baseState = memoizedState;
 
 	// @ts-ignore
 	const dispatch = dispatchSetState.bind(null, currentlyRenderingFiber, queue);
@@ -281,11 +325,45 @@ export const dispatchSetState = <State>(
 	scheduleUpdateOnFiber(fiber, lane);
 };
 
+export function mountTrasition(): [boolean, (callback: () => void) => void] {
+	const [isPending, setPending] = mountState(false);
+	const hook = mountWorkInProgressHook();
+	const start = startTransition.bind(null, setPending);
+
+	hook.memoizedState = start;
+
+	return [isPending, start];
+}
+
+export function updateTrasition(): [boolean, (callback: () => void) => void] {
+	const [isPending] = updateState();
+	const hook = updateWorkInProgressHook();
+	const start = hook.memoizedState;
+
+	return [isPending as boolean, start];
+}
+
+export const startTransition = (
+	setPending: Dispach<boolean>,
+	callback: () => void
+) => {
+	setPending(true);
+	const prevTransition = currentBatchConfig.transition;
+	currentBatchConfig.transition = 1;
+
+	callback();
+	setPending(false);
+
+	currentBatchConfig.transition = prevTransition;
+};
+
 export const mountWorkInProgressHook = (): Hook => {
 	const hook: Hook = {
 		memoizedState: null,
 		updateQueue: null,
-		next: null
+		next: null,
+		baseState: null,
+		baseQueue: null
 	};
 	if (workInProgressHook === null) {
 		if (currentlyRenderingFiber === null) {

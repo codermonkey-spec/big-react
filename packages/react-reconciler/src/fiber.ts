@@ -9,6 +9,7 @@ import {
 import { Props, Key, Ref, ReactElementType } from 'shared/ReactTypes';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
+import { CallbackNode } from 'scheduler';
 
 export class FiberNode {
 	tag: WorkTag; // 节点类型 () -> {}  -> FunctionComponent
@@ -69,6 +70,8 @@ export class FiberRootNode {
 	pendingLanes: Lanes;
 	finishedLane: Lane;
 	pendingPassiveEffects: PendingPassiveEffects;
+	callbackNode: CallbackNode | null;
+	callbackPriority: Lane;
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
@@ -76,6 +79,8 @@ export class FiberRootNode {
 		this.finishedWork = null;
 		this.pendingLanes = NoLanes;
 		this.finishedLane = NoLane;
+		this.callbackNode = null;
+		this.callbackPriority = NoLane;
 
 		this.pendingPassiveEffects = {
 			unmount: [],
@@ -109,12 +114,12 @@ export const createWorkInProcess = (
 	wip.child = current.child;
 	wip.memoizedProps = current.memoizedProps;
 	wip.memoizedState = current.memoizedState;
-
+	wip.ref = current.ref;
 	return wip;
 };
 
 export const createFiberFromElement = (element: ReactElementType) => {
-	const { type, key, props } = element;
+	const { type, key, props, ref } = element;
 
 	let fiberTag: WorkTag = FunctionComponent;
 
@@ -127,6 +132,8 @@ export const createFiberFromElement = (element: ReactElementType) => {
 
 	const fiber = new FiberNode(fiberTag, props, key);
 	fiber.type = type;
+
+	fiber.ref = ref;
 	return fiber;
 };
 

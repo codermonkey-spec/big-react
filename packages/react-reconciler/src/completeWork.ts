@@ -7,12 +7,16 @@ import {
 	HostRoot,
 	HostText
 } from './workTags';
-import { NoFlags, Update } from './fiberFlags';
+import { NoFlags, Ref, Update } from './fiberFlags';
 import { updateFiberProps } from 'react-dom/src/SyntheticEvent';
 
 export const markUpdate = (fiber: FiberNode) => {
 	fiber.flags |= Update;
 };
+
+export function markRef(fiber: FiberNode) {
+	fiber.flags |= Ref;
+}
 
 export const completeWork = (wip: FiberNode) => {
 	// 归阶段的操作
@@ -25,6 +29,9 @@ export const completeWork = (wip: FiberNode) => {
 				// update
 				// 判断props是否改变
 				updateFiberProps(wip.stateNode, newProps);
+				if (current.ref !== wip.ref) {
+					markRef(wip);
+				}
 			} else {
 				/**
 				 * 1.构建dom
@@ -33,6 +40,11 @@ export const completeWork = (wip: FiberNode) => {
 				const instance = createInstance(wip.type, newProps);
 				appendAllChildren(instance, wip);
 				wip.stateNode = instance;
+
+				// mount阶段标记ref
+				if (wip.ref !== null) {
+					markRef(wip);
+				}
 			}
 			bubbleProperties(wip);
 			return null;

@@ -6,18 +6,24 @@ import {
 	unstable_UserBlockingPriority
 } from 'scheduler';
 import { FiberRootNode } from './fiber';
+import ReactCurrentBatchConfig from 'react/src/curentBatchConfig';
 
 export type Lane = number;
 export type Lanes = number;
 
-export const SyncLane = 0b0001;
-export const NoLane = 0b0000;
-export const NoLanes = 0b0000;
-export const InputContinuousLane = 0b0010;
-export const DefaultLane = 0b0100;
-export const IdleLane = 0b1000;
+export const SyncLane = 0b00001;
+export const NoLane = 0b00000;
+export const NoLanes = 0b00000;
+export const InputContinuousLane = 0b00010;
+export const DefaultLane = 0b00100;
+export const transitionane = 0b01000;
+export const IdleLane = 0b10000;
 
 export const requestUpdateLane = () => {
+	const isTransition = ReactCurrentBatchConfig.transition !== null;
+	if (isTransition) {
+		return transitionane;
+	}
 	// 从上下文中获取不同的优先级
 	const currentSchedulerPriority = unstable_getCurrentPriorityLevel();
 	const lane = schedulerPriorityToLane(currentSchedulerPriority);
@@ -30,6 +36,10 @@ export const mergeLanes = (laneA: Lane, laneB: Lane): Lanes => {
 
 export const getHighestPriorityLane = (lanes: Lanes): Lane => {
 	return lanes & -lanes;
+};
+
+export const isSubsetOfLanes = (set: Lanes, subset: Lane) => {
+	return (set & subset) === subset;
 };
 
 export function markRootFinished(root: FiberRootNode, lane: Lane) {

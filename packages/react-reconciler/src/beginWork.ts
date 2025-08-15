@@ -11,6 +11,7 @@ import {
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { renderWithHooks } from './fiberHooks';
 import { Lane } from './fiberLanes';
+import { Ref } from './fiberFlags';
 
 export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	// 比较ReactElement和FilberNode,生成子FilberNode
@@ -76,7 +77,7 @@ export const updateHostRoot = (wip: FiberNode, renderLane: Lane) => {
 export const updateHostComponent = (wip: FiberNode) => {
 	const nextProps = wip.memoizedProps;
 	const nextChildren = nextProps.children;
-
+	markRef(wip.alternate, wip);
 	reconcileChildren(wip, nextChildren);
 	return wip.child;
 };
@@ -96,3 +97,14 @@ export const reconcileChildren = (
 		wip.child = mountChildFibers(wip, null, children);
 	}
 };
+
+export function markRef(current: FiberNode | null, workInProgress: FiberNode) {
+	const ref = workInProgress.ref;
+
+	if (
+		(current === null && ref !== null) ||
+		(current !== null && current.ref !== ref)
+	) {
+		workInProgress.flags |= Ref;
+	}
+}
