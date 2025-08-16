@@ -10,7 +10,7 @@ import {
 	Update,
 	UpdateQueue
 } from './updateQueue';
-import { Action } from 'shared/ReactTypes';
+import { Action, ReactContext } from 'shared/ReactTypes';
 import { scheduleUpdateOnFiber } from './workLoop';
 import { Lane, NoLane, requestUpdateLane } from './fiberLanes';
 import { Flags, PassiveEffect } from './fiberFlags';
@@ -77,7 +77,8 @@ export const HooksDispatcherOnMount: Dispatch = {
 	useState: mountState,
 	useEffect: mountEffect as any,
 	useTrasition: mountTrasition,
-	useRef: mountRef
+	useRef: mountRef,
+	useContext: readContext
 };
 
 export const HooksDispatcherOnUpdate: Dispatch = {
@@ -85,7 +86,8 @@ export const HooksDispatcherOnUpdate: Dispatch = {
 	// @ts-ignore
 	useEffect: updateEffect,
 	useTrasition: updateTrasition,
-	useRef: updateRef
+	useRef: updateRef,
+	useContext: readContext
 };
 
 export function mountRef<T>(initialValue: T): { current: T } {
@@ -379,3 +381,12 @@ export const mountWorkInProgressHook = (): Hook => {
 
 	return workInProgressHook;
 };
+
+export function readContext<T>(context: ReactContext<T>): T {
+	const consumer = currentlyRenderingFiber;
+	if (consumer === null) {
+		throw new Error('只能在函数组件中调用useContext');
+	}
+	const value = context._currentValue;
+	return value;
+}
