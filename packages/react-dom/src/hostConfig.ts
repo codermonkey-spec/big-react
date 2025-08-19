@@ -70,3 +70,20 @@ export const scheeduleMicroTask =
 			? (callback: (...args: any) => void) =>
 					Promise.resolve(null).then(callback)
 			: setTimeout;
+
+export function hideInstance(instance: Instance) {
+	const style = (instance as HTMLElement).style;
+	style.setProperty('display', 'none', 'important');
+}
+export function unHideInstance(instance: Instance) {
+	const style = (instance as HTMLElement).style;
+	style.display = '';
+}
+
+export function hideTextInstance(textInstance: TextInstance) {
+	textInstance.nodeValue = '';
+}
+
+export function unHideTextInstance(textInstance: TextInstance, text: string) {
+	textInstance.nodeValue = text;
+}
