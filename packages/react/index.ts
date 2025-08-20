@@ -1,9 +1,10 @@
-import { jsx, jsxDev, isValidElement as isValidElementFn } from './src/jsx';
+import { jsx, isValidElement as isValidElementFn } from './src/jsx';
 import currentDispatcher, {
 	Dispatch,
 	resolveDispatcher
 } from './src/currentDispatcher';
 import currentBatchConfig from './src/curentBatchConfig';
+import { Usable } from 'shared/ReactTypes';
 
 export {
 	REACT_SUSPENSE_TYPE as Suspense,
@@ -36,6 +37,11 @@ export const useContext: Dispatch['useContext'] = (context) => {
 	const dispatcher = resolveDispatcher();
 
 	return dispatcher.useContext(context);
+};
+export const use: Dispatch['use'] = <T>(usable: Usable<T>) => {
+	const dispatcher = resolveDispatcher();
+
+	return dispatcher.use(usable);
 };
 export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
 	currentDispatcher,

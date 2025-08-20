@@ -20,8 +20,15 @@ import {
 import { mountChildFibers, reconcileChildFibers } from './childFibers';
 import { dispatchSetState, renderWithHooks } from './fiberHooks';
 import { Lane } from './fiberLanes';
-import { ChildDeletion, Placement, Ref } from './fiberFlags';
+import {
+	ChildDeletion,
+	DidCapture,
+	NoFlags,
+	Placement,
+	Ref
+} from './fiberFlags';
 import { pushProvider } from './fiberContext';
+import { pushSuspenseHandler } from './suspenseContext';
 
 export const beginWork = (wip: FiberNode, renderLane: Lane) => {
 	// 比较ReactElement和FilberNode,生成子FilberNode
@@ -59,13 +66,16 @@ export function updateSuspenseComponent(wip: FiberNode) {
 	const current = wip.alternate;
 	const nextProps = wip.pendingProps;
 	let showFallback = false;
-	const didSuspend = true;
+	const didSuspend = (wip.flags & DidCapture) !== NoFlags;
 	if (didSuspend) {
 		showFallback = true;
+		wip.flags &= ~DidCapture;
 	}
 
 	const nextPrimaryChildren = nextProps.children;
 	const nextFallbackChildren = nextProps.fallback;
+
+	pushSuspenseHandler(wip);
 
 	if (current === null) {
 		// mount

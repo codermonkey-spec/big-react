@@ -33,6 +33,9 @@ import {
 	unstable_cancelCallback
 } from 'scheduler';
 import { HookHasEffect, Passive } from './hookEffectTag';
+import { getSuspenseThenable, SuspenseException } from './thenable';
+import { resetHooksOnUnwind } from './fiberHooks';
+import { throwException } from './fiberThrow';
 
 let workInProgress: FiberNode | null = null;
 let wipRootRenderLane: Lane = NoLane;
@@ -43,6 +46,12 @@ type RootExitStatus = number;
 const RootInComplete = 1;
 const RootCompleted = 2;
 // TODO 执行过程中报错了
+
+export type SuspenedReason = typeof NotSuspended | typeof SuspendedOnData;
+export const NotSuspended = 0;
+export const SuspendedOnData = 1;
+export let wipSuspenedReason: SuspenedReason = NotSuspended;
+export let wipThrownValue: any = null;
 
 function prepareFreshStack(root: FiberRootNode, lane: Lane) {
 	root.finishedLane = NoLane;
@@ -59,7 +68,7 @@ export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
 	ensureRootIsScheduled(root);
 };
 
-function ensureRootIsScheduled(root: FiberRootNode) {
+export function ensureRootIsScheduled(root: FiberRootNode) {
 	const updateLane = getHighestPriorityLane(root.pendingLanes);
 	const existingCallback = root.callbackNode;
 	if (updateLane === NoLane) {
@@ -204,6 +213,13 @@ function renderRoot(root: FiberRootNode, lane: Lane, shouldTimeSlice: boolean) {
 	}
 	do {
 		try {
+			if (wipSuspenedReason !== NotSuspended && workInProgress !== null) {
+				const thrownValue = wipThrownValue;
+				wipSuspenedReason = NotSuspended;
+				wipThrownValue = null;
+				throwAndUnwindWorkLoop(root, workInProgress, thrownValue, lane);
+			}
+
 			shouldTimeSlice ? workLoopConcurrent() : workLoopSync();
 			break;
 		} catch (e) {
@@ -211,7 +227,8 @@ function renderRoot(root: FiberRootNode, lane: Lane, shouldTimeSlice: boolean) {
 				console.log('root', root);
 				console.warn('workLoop发生错误', e);
 			}
-			workInProgress = null;
+
+			handleThrow(root, e);
 		}
 	} while (true);
 
@@ -227,6 +244,48 @@ function renderRoot(root: FiberRootNode, lane: Lane, shouldTimeSlice: boolean) {
 
 	// TODO 报错的情况
 	return RootCompleted;
+}
+
+export function throwAndUnwindWorkLoop(
+	root: FiberRootNode,
+	unitOfWork: FiberNode,
+	thrownValue: any,
+	lane: Lane
+) {
+	// 1. 重置全局变量
+	resetHooksOnUnwind();
+	// 2. 请求返回重新出发更新
+	throwException(root, thrownValue, lane);
+	// 3. unwind
+	unwindUnitOfWork(unitOfWork);
+}
+
+export function unwindUnitOfWork(unitOfWork: FiberNode) {
+	let incompleteWork: FiberNode | null = unitOfWork;
+
+	do {
+		const next = unwindWork(incompleteWork);
+		if (next !== null) {
+			workInProgress = next;
+			return;
+		}
+		const returnFiber = incompleteWork.return as FiberNode;
+		if (returnFiber !== null) {
+			returnFiber.deletions = null;
+		}
+
+		incompleteWork = returnFiber;
+	} while (incompleteWork !== null);
+
+	workInProgress = null;
+}
+
+export function handleThrow(root: FiberRootNode, thrownValue: any) {
+	if (thrownValue === SuspenseException) {
+		thrownValue = getSuspenseThenable();
+		wipSuspenedReason = SuspendedOnData;
+	}
+	wipThrownValue = thrownValue;
 }
 
 export const commitRoot = (root: FiberRootNode) => {

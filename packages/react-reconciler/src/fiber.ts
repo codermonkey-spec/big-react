@@ -9,7 +9,7 @@ import {
 	SuspenseComponent,
 	WorkTag
 } from './workTags';
-import { Props, Key, Ref, ReactElementType } from 'shared/ReactTypes';
+import { Props, Key, Ref, ReactElementType, Wakeable } from 'shared/ReactTypes';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
 import { CallbackNode } from 'scheduler';
@@ -26,7 +26,7 @@ export class FiberNode {
 	key: Key;
 	type: any; // 当前节点的组件类型(函数组件，类组件，标签名)
 	stateNode: any; // DOM节点或者是组件实例
-	ref: Ref; // 引用，如(ref,React.createRef)
+	ref: Ref | null; // 引用，如(ref,React.createRef)
 
 	return: FiberNode | null; // 父fiber
 	sibling: FiberNode | null; // 兄弟fiber
@@ -81,6 +81,7 @@ export class FiberRootNode {
 	pendingPassiveEffects: PendingPassiveEffects;
 	callbackNode: CallbackNode | null;
 	callbackPriority: Lane;
+	pingCache: WeakMap<Wakeable<any>, Set<Lane>> | null;
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
@@ -95,6 +96,8 @@ export class FiberRootNode {
 			unmount: [],
 			update: []
 		};
+
+		this.pingCache = null;
 	}
 }
 

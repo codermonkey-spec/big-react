@@ -8,6 +8,9 @@ export const PassiveEffect = 0b00000000000000000000001000;
 export const Ref = 0b00000000000000000000010000;
 export const Visibility = 0b00000000000000000000100000;
 
+export const DidCapture = 0b00000000000000000001000000;
+
+export const Shouldcapture = 0b00000000000000000100000000;
 export const MutationMask =
 	Placement | Update | ChildDeletion | Ref | Visibility;
 export const LayoutMask = Ref;
