@@ -36,6 +36,7 @@ import { HookHasEffect, Passive } from './hookEffectTag';
 import { getSuspenseThenable, SuspenseException } from './thenable';
 import { resetHooksOnUnwind } from './fiberHooks';
 import { throwException } from './fiberThrow';
+import { unwindWork } from './fiberUnwindWork';
 
 let workInProgress: FiberNode | null = null;
 let wipRootRenderLane: Lane = NoLane;
