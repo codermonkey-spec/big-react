@@ -82,6 +82,9 @@ export class FiberRootNode {
 	callbackNode: CallbackNode | null;
 	callbackPriority: Lane;
 	pingCache: WeakMap<Wakeable<any>, Set<Lane>> | null;
+
+	suspendedLanes: Lanes;
+	pingdLanes: Lanes;
 	constructor(container: Container, hostRootFiber: FiberNode) {
 		this.container = container;
 		this.current = hostRootFiber;
@@ -91,6 +94,8 @@ export class FiberRootNode {
 		this.finishedLane = NoLane;
 		this.callbackNode = null;
 		this.callbackPriority = NoLane;
+		this.suspendedLanes = NoLane;
+		this.pingdLanes = NoLane;
 
 		this.pendingPassiveEffects = {
 			unmount: [],

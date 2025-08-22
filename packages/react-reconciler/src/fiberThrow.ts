@@ -1,9 +1,9 @@
 import { Wakeable } from 'shared/ReactTypes';
 import { FiberNode, FiberRootNode } from './fiber';
-import { Lane } from './fiberLanes';
+import { Lane, markRootPinged } from './fiberLanes';
 import { ensureRootIsScheduled, markRootUpdated } from './workLoop';
 import { getSuspenseHandler } from './suspenseContext';
-import { shouldCapture } from './fiberFlags';
+import { Shouldcapture } from './fiberFlags';
 
 export function throwException(root: FiberRootNode, value: any, lane: Lane) {
 	// Error boundary
@@ -18,7 +18,7 @@ export function throwException(root: FiberRootNode, value: any, lane: Lane) {
 		const wakeable: Wakeable<any> = value;
 		const suspenseBoundary = getSuspenseHandler();
 		if (suspenseBoundary) {
-			suspenseBoundary.flags |= shouldCapture;
+			suspenseBoundary.flags |= Shouldcapture;
 		}
 		attachPingListener(root, wakeable, lane);
 	}
@@ -51,6 +51,7 @@ export function attachPingListener(
 				pingCache.delete(wakeable);
 			}
 
+			markRootPinged(root, lane);
 			markRootUpdated(root, lane);
 			ensureRootIsScheduled(root);
 		}

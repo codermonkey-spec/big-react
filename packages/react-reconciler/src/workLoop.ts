@@ -17,9 +17,11 @@ import {
 } from './commitWork';
 import {
 	getHighestPriorityLane,
+	getNextLane,
 	Lane,
 	lanesToSchedulerPriority,
 	markRootFinished,
+	markRootSuspended,
 	mergeLanes,
 	NoLane,
 	SyncLane
@@ -44,8 +46,17 @@ let rootDoesHasPassiveEffects: boolean = false;
 
 type RootExitStatus = number;
 
+// 工作中的状态
+const RootInProgress = 0;
+// 并发更新 中途打断
 const RootInComplete = 1;
+// render完成
 const RootCompleted = 2;
+//由于挂起，当前是未完成的状态
+const RootDidNotComplete = 3;
+
+let wipRootExitStatus: number = RootInProgress;
+
 // TODO 执行过程中报错了
 
 export type SuspenedReason = typeof NotSuspended | typeof SuspendedOnData;
@@ -59,6 +70,9 @@ function prepareFreshStack(root: FiberRootNode, lane: Lane) {
 	root.finishedWork = null;
 	workInProgress = createWorkInProcess(root.current, {});
 	wipRootRenderLane = lane;
+	wipRootExitStatus = RootInProgress;
+	wipSuspenedReason = NotSuspended;
+	wipThrownValue = null;
 }
 
 export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
@@ -70,7 +84,7 @@ export const scheduleUpdateOnFiber = (fiber: FiberNode, lane: Lane) => {
 };
 
 export function ensureRootIsScheduled(root: FiberRootNode) {
-	const updateLane = getHighestPriorityLane(root.pendingLanes);
+	const updateLane = getNextLane(root);
 	const existingCallback = root.callbackNode;
 	if (updateLane === NoLane) {
 		if (existingCallback !== null) {
@@ -150,7 +164,7 @@ export const performConcurrentWorkOnRoot = (
 		}
 	}
 
-	const lane = getHighestPriorityLane(root.pendingLanes);
+	const lane = getNextLane(root);
 	const curCallbackNode = root.callbackNode;
 	if (lane === NoLane) {
 		return null;
@@ -160,30 +174,37 @@ export const performConcurrentWorkOnRoot = (
 	// render阶段
 	const exitStatus = renderRoot(root, lane, !needSync);
 
-	ensureRootIsScheduled(root);
-	if (exitStatus === RootInComplete) {
-		// 中断执行的情况
-		if (root.callbackNode !== curCallbackNode) {
-			return null;
-		}
+	switch (exitStatus) {
+		case RootCompleted:
+			// 中断执行的情况
+			if (root.callbackNode !== curCallbackNode) {
+				return null;
+			}
 
-		return performConcurrentWorkOnRoot.bind(null, root);
-	}
+			return performConcurrentWorkOnRoot.bind(null, root);
+		case RootCompleted:
+			const finishedWork = root.current.alternate;
+			root.finishedWork = finishedWork;
+			root.finishedLane = lane;
+			wipRootRenderLane = NoLane;
 
-	if (exitStatus === RootCompleted) {
-		const finishedWork = root.current.alternate;
-		root.finishedWork = finishedWork;
-		root.finishedLane = lane;
-		wipRootRenderLane = NoLane;
+			commitRoot(root);
+			break;
+		case RootDidNotComplete:
+			wipRootRenderLane = NoLane;
+			markRootSuspended(root, lane);
+			ensureRootIsScheduled(root);
+			break;
+		default:
+			if (__DEV__) {
+				console.warn('还未实现的并发更新结束状态');
+			}
 
-		commitRoot(root);
-	} else if (__DEV__) {
-		console.warn('还未实现的并发更新结束状态');
+			break;
 	}
 };
-
 function performSyncWorkOnRoot(root: FiberRootNode) {
-	const nextLane = getHighestPriorityLane(root.pendingLanes);
+	const nextLane = getNextLane(root);
 	if (nextLane !== SyncLane) {
 		ensureRootIsScheduled(root);
 		return;
@@ -191,18 +212,28 @@ function performSyncWorkOnRoot(root: FiberRootNode) {
 
 	const exitStatus = renderRoot(root, nextLane, false);
 
-	if (exitStatus === RootCompleted) {
-		const finishedWork = root.current.alternate;
-		root.finishedWork = finishedWork;
-		root.finishedLane = nextLane;
-		wipRootRenderLane = NoLane;
+	switch (exitStatus) {
+		case RootCompleted:
+			const finishedWork = root.current.alternate;
+			root.finishedWork = finishedWork;
+			root.finishedLane = nextLane;
+			wipRootRenderLane = NoLane;
 
-		commitRoot(root);
-	} else if (__DEV__) {
-		console.warn('还未实现的同步更新结束状态');
+			commitRoot(root);
+			break;
+		case RootDidNotComplete:
+			wipRootRenderLane = NoLane;
+			markRootSuspended(root, nextLane);
+			ensureRootIsScheduled(root);
+			break;
+		default:
+			if (__DEV__) {
+				console.warn('还未实现的同步更新结束状态');
+			}
+
+			break;
 	}
 }
-
 function renderRoot(root: FiberRootNode, lane: Lane, shouldTimeSlice: boolean) {
 	if (__DEV__) {
 		console.log(`开始${shouldTimeSlice ? '并发' : '同步'}`);
@@ -232,6 +263,10 @@ function renderRoot(root: FiberRootNode, lane: Lane, shouldTimeSlice: boolean) {
 			handleThrow(root, e);
 		}
 	} while (true);
+
+	if (wipRootExitStatus !== RootInProgress) {
+		return wipRootExitStatus;
+	}
 
 	// 中断执行
 	if (shouldTimeSlice && workInProgress !== null) {
@@ -278,6 +313,7 @@ export function unwindUnitOfWork(unitOfWork: FiberNode) {
 		incompleteWork = returnFiber;
 	} while (incompleteWork !== null);
 
+	wipRootExitStatus = RootDidNotComplete;
 	workInProgress = null;
 }
 

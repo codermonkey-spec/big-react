@@ -269,6 +269,12 @@ export const updateHostRoot = (wip: FiberNode, renderLane: Lane) => {
 
 	// 计算出新的state
 	const { memoizedState } = processUpdateQueue(baseState, pending, renderLane);
+
+	const current = wip.alternate;
+	if (current !== null) {
+		current.memoizedState = memoizedState;
+	}
+
 	wip.memoizedState = memoizedState;
 
 	const nextChildren = wip.memoizedState;
