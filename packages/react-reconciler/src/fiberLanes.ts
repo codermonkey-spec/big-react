@@ -111,3 +111,11 @@ export function getNextLane(root: FiberRootNode): Lane {
 
 	return nextLane;
 }
+
+export function includeSomeLanes(set: Lanes, subset: Lanes | Lane): boolean {
+	return (set & subset) !== NoLanes;
+}
+
+export function removeLanes(set: Lanes, subet: Lanes | Lane): Lanes {
+	return set & ~subet;
+}
