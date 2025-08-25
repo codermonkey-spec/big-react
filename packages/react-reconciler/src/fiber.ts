@@ -5,6 +5,7 @@ import {
 	Fragment,
 	FunctionComponent,
 	HostCompoment,
+	MemoComponent,
 	OffscreenComponent,
 	SuspenseComponent,
 	WorkTag
@@ -13,7 +14,11 @@ import { Props, Key, Ref, ReactElementType, Wakeable } from 'shared/ReactTypes';
 import { Lane, Lanes, NoLane, NoLanes } from './fiberLanes';
 import { Effect } from './fiberHooks';
 import { CallbackNode } from 'scheduler';
-import { REACT_PROVIDER_TYPE, REACT_SUSPENSE_TYPE } from 'shared/ReactSymbols';
+import {
+	REACT_MEMO_TYPE,
+	REACT_PROVIDER_TYPE,
+	REACT_SUSPENSE_TYPE
+} from 'shared/ReactSymbols';
 
 export interface OffscreenProps {
 	mode: 'visible' | 'hidden';
@@ -153,11 +158,20 @@ export const createFiberFromElement = (element: ReactElementType) => {
 	if (typeof type === 'string') {
 		// HostComponent <div></div> -> type: "div"
 		fiberTag = HostCompoment;
-	} else if (
-		typeof type === 'object' &&
-		type.$$typeof === REACT_PROVIDER_TYPE
-	) {
-		fiberTag = ContextProvider;
+	} else if (typeof type === 'object') {
+		switch (type.$$typeof) {
+			case REACT_PROVIDER_TYPE:
+				fiberTag = ContextProvider;
+				break;
+			case REACT_MEMO_TYPE:
+				fiberTag = MemoComponent;
+
+			default:
+				if (__DEV__) {
+					console.warn('未定义的类型', element);
+				}
+				break;
+		}
 	} else if (type === REACT_SUSPENSE_TYPE) {
 		fiberTag = SuspenseComponent;
 	} else if (typeof type !== 'function' && __DEV__) {

@@ -11,6 +11,8 @@ export {
 	REACT_FRAGMENT_TYPE as Fragment
 } from 'shared/ReactSymbols';
 
+export { memo } from './src/memo';
+
 export const useState: Dispatch['useState'] = (initialState) => {
 	const dispatcher = resolveDispatcher();
 

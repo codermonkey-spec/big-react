@@ -58,7 +58,11 @@ export interface FCUpdateQueue<State> extends UpdateQueue<State> {
 export type EffectCallback = () => void;
 export type EffectDeps = any[] | null;
 
-export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
+export const renderWithHooks = (
+	wip: FiberNode,
+	Component: FiberNode['type'],
+	lane: Lane
+) => {
 	currentlyRenderingFiber = wip;
 	wip.memoizedState = null;
 	wip.updateQueue = null;
@@ -72,7 +76,6 @@ export const renderWithHooks = (wip: FiberNode, lane: Lane) => {
 		currentDispatcher.current = HooksDispatcherOnMount;
 	}
 
-	const Component = wip.type;
 	const props = wip.pendingProps;
 	const children = Component(props);
 
