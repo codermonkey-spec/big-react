@@ -46,7 +46,7 @@ export interface Effect {
 	tag: Flags;
 	create: EffectCallback | void;
 	destroy: EffectCallback | void;
-	deps: EffectDeps;
+	deps: HookDeps;
 	next: Effect | null;
 }
 
@@ -56,7 +56,7 @@ export interface FCUpdateQueue<State> extends UpdateQueue<State> {
 }
 
 export type EffectCallback = () => void;
-export type EffectDeps = any[] | null;
+export type HookDeps = any[] | null;
 
 export const renderWithHooks = (
 	wip: FiberNode,
@@ -94,7 +94,9 @@ export const HooksDispatcherOnMount: Dispatch = {
 	useTrasition: mountTrasition,
 	useRef: mountRef,
 	useContext: readContext,
-	use
+	use,
+	useMemo: mountMemo,
+	useCallback: mountCallback
 };
 
 export const HooksDispatcherOnUpdate: Dispatch = {
@@ -104,7 +106,10 @@ export const HooksDispatcherOnUpdate: Dispatch = {
 	useTrasition: updateTrasition,
 	useRef: updateRef,
 	useContext: readContext,
-	use
+	use,
+
+	useMemo: updateMemo,
+	useCallback: updateCallback
 };
 
 export function mountRef<T>(initialValue: T): { current: T } {
@@ -119,7 +124,7 @@ export function updateRef() {
 	return hook.memoizedState;
 }
 
-function mountEffect(create: EffectCallback | void, deps: EffectDeps) {
+function mountEffect(create: EffectCallback | void, deps: HookDeps) {
 	const hook = mountWorkInProgressHook();
 	const nextDeps = deps === undefined ? null : deps;
 	(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
@@ -132,7 +137,7 @@ function mountEffect(create: EffectCallback | void, deps: EffectDeps) {
 	);
 }
 
-function updateEffect(create: EffectCallback | void, deps: EffectDeps) {
+function updateEffect(create: EffectCallback | void, deps: HookDeps) {
 	const hook = updateWorkInProgressHook();
 	const nextDeps = deps === undefined ? null : deps;
 	(currentlyRenderingFiber as FiberNode).flags |= PassiveEffect;
@@ -164,7 +169,7 @@ function updateEffect(create: EffectCallback | void, deps: EffectDeps) {
 	}
 }
 
-export function areHookInputsEqual(nextDeps: EffectDeps, prevDeps: EffectDeps) {
+export function areHookInputsEqual(nextDeps: HookDeps, prevDeps: HookDeps) {
 	if (nextDeps === null || prevDeps === null) {
 		return false;
 	}
@@ -184,7 +189,7 @@ function pushEffect(
 	hookFlags: Flags,
 	create: EffectCallback | void,
 	destroy: EffectCallback | void,
-	deps: EffectDeps
+	deps: HookDeps
 ): Effect {
 	const effect: Effect = {
 		tag: hookFlags,
@@ -467,4 +472,52 @@ export function bailoutHook(wip: FiberNode, renderLane: Lane) {
 	wip.updateQueue = curent.updateQueue;
 	wip.flags &= ~PassiveEffect;
 	curent.lanes = removeLanes(curent.lanes, renderLane);
+}
+
+export function mountCallback<T>(callback: T, deps: HookDeps | undefined) {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
+export function updateCallback<T>(callback: T, deps: HookDeps | undefined) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+
+	const prevState = hook.memoizedState;
+	if (nextDeps !== null) {
+		const prevDeps = prevState[1];
+		if (areHookInputsEqual(nextDeps, prevDeps)) {
+			return prevState[0];
+		}
+	}
+
+	hook.memoizedState = [callback, nextDeps];
+	return callback;
+}
+
+export function mountMemo<T>(nextCreate: () => T, deps: HookDeps | undefined) {
+	const hook = mountWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+	const nextValue = nextCreate();
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
+}
+
+export function updateMemo<T>(nextCreate: () => T, deps: HookDeps | undefined) {
+	const hook = updateWorkInProgressHook();
+	const nextDeps = deps === undefined ? null : deps;
+
+	const prevState = hook.memoizedState;
+	if (nextDeps !== null) {
+		const prevDeps = prevState[1];
+		if (areHookInputsEqual(nextDeps, prevDeps)) {
+			return prevState[0];
+		}
+	}
+
+	const nextValue = nextCreate();
+	hook.memoizedState = [nextValue, nextDeps];
+	return nextValue;
 }
